@@ -1,0 +1,18 @@
+---
+description: Design collaboration protocol and interview requirement
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Design Collaboration Rule
+
+For any design-heavy request or UI change:
+
+1. Read `docs/PROJECT_BRIEF.md` and `docs/DESIGN_SYSTEM_PLAYBOOK.md` first.
+2. Use the Collaboration Protocol in `docs/DESIGN_SYSTEM_PLAYBOOK.md`.
+3. Run a short design interview before implementation using the required questions in:
+   - `Design Interview Script (Required Before Design Changes)`
+4. If intent, constraints, references, or success criteria are unclear, ask clarifying questions before editing files.
+5. Validate final output against `Design QA Checklist` in the same playbook.
+
+Treat this as the canonical process for design collaboration in this repository.
