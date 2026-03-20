@@ -25,5 +25,9 @@
     "globals": "^16.5.0",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.59.0",
+    "@rollup/rollup-darwin-x64": "^4.59.0"
   }
 }

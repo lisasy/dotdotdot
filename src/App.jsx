@@ -1,162 +1,268 @@
-import { useState, useCallback } from "react";
-import Calendar from "./components/Calendar";
-import ActivityPanel from "./components/ActivityPanel";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import CalendarMonth from "./components/CalendarMonth";
+import TodaySheet from "./components/TodaySheet";
 import { useActivities } from "./hooks/useActivities";
 import { ACTIVITY_TYPES } from "./config/activityTypes";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 function formatDateForInput(date) {
   const d = date instanceof Date ? date : new Date(date);
   return d.toISOString().slice(0, 10);
 }
 
+function getMonthLabel(date) {
+  return `${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 export default function App() {
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [panelInitialDate, setPanelInitialDate] = useState(null);
-  const [editActivity, setEditActivity] = useState(null);
+  const today = useMemo(() => new Date(), []);
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [viewFilter, setViewFilter] = useState("all");
+  const [visibleMonthLabel, setVisibleMonthLabel] = useState(() => getMonthLabel(today));
+  const [visibleMonthIdx, setVisibleMonthIdx] = useState(12);
+
+  const mainRef = useRef(null);
+
+  const months = useMemo(() => {
+    const list = [];
+    for (let i = -12; i <= 0; i++) {
+      list.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+    }
+    return list;
+  }, [today]);
+
+  const isViewingCurrentMonth = visibleMonthIdx === months.length - 1;
+  const isAtStart = visibleMonthIdx === 0;
 
   const {
     activities,
     addActivity,
-    updateActivity,
     deleteActivity,
     getActivitiesByDate,
   } = useActivities();
 
-  const openPanel = useCallback((date = null) => {
-    setPanelInitialDate(date ?? new Date());
-    setEditActivity(null);
-    setPanelOpen(true);
+  const handleDateClick = useCallback((date) => {
+    setSelectedDate(date);
   }, []);
 
-  const closePanel = useCallback(() => {
-    setPanelOpen(false);
-    setEditActivity(null);
-  }, []);
-
-  const handleDateClick = useCallback(
-    (date) => {
-      setPanelInitialDate(date);
-      setEditActivity(null);
-      setPanelOpen(true);
-    },
-    []
-  );
-
-  const handleSave = useCallback(
-    (id, { date, typeId }) => {
-      if (id) {
-        updateActivity(id, { date, typeId });
+  const handleTypeTap = useCallback(
+    (type, activity, dateStr) => {
+      if (activity) {
+        deleteActivity(activity.id);
       } else {
-        addActivity({ date, typeId });
+        addActivity({ date: dateStr, typeId: type.id });
       }
     },
-    [addActivity, updateActivity]
+    [addActivity, deleteActivity]
   );
 
-  const panelDate = editActivity
-    ? editActivity.date
-    : panelInitialDate
-      ? formatDateForInput(panelInitialDate)
-      : formatDateForInput(new Date());
-  const activitiesForDate = panelOpen ? getActivitiesByDate(panelDate) : [];
+  // Detect which month is visible based on scroll position
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+
+    let rafId = null;
+
+    const update = () => {
+      const monthEls = el.querySelectorAll("[data-month-index]");
+      if (!monthEls.length) return;
+
+      const containerTop = el.getBoundingClientRect().top + 20;
+      let closest = null;
+      let closestDist = Infinity;
+
+      monthEls.forEach((monthEl) => {
+        const dist = Math.abs(monthEl.getBoundingClientRect().top - containerTop);
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = monthEl;
+        }
+      });
+
+      if (closest) {
+        const idx = parseInt(closest.getAttribute("data-month-index"), 10);
+        setVisibleMonthIdx(idx);
+        setVisibleMonthLabel(getMonthLabel(months[idx]));
+      }
+    };
+
+    const handleScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    rafId = requestAnimationFrame(update);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      el.removeEventListener("scroll", handleScroll);
+    };
+  }, [months]);
+
+  const scrollToMonthIndex = useCallback((idx) => {
+    const el = mainRef.current;
+    if (!el) return;
+    const target = el.querySelector(`[data-month-index="${idx}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
+  const goToPrevMonth = useCallback(() => {
+    if (visibleMonthIdx > 0) scrollToMonthIndex(visibleMonthIdx - 1);
+  }, [visibleMonthIdx, scrollToMonthIndex]);
+
+  const goToNextMonth = useCallback(() => {
+    if (visibleMonthIdx < months.length - 1) scrollToMonthIndex(visibleMonthIdx + 1);
+  }, [visibleMonthIdx, months.length, scrollToMonthIndex]);
+
+  const goToToday = useCallback(() => {
+    scrollToMonthIndex(months.length - 1);
+    setSelectedDate(new Date());
+  }, [months.length, scrollToMonthIndex]);
+
+  // Auto-scroll to current month on mount
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      const target = el.querySelector(`[data-month-index="${months.length - 1}"]`);
+      if (target) target.scrollIntoView({ block: "start" });
+    });
+  }, [months.length]);
+
+  const activitiesForDate = getActivitiesByDate(
+    selectedDate ? formatDateForInput(selectedDate) : formatDateForInput(new Date())
+  );
+
+  const selectedDateKey = formatDateForInput(selectedDate || new Date());
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative">
-      <div
-        className={`
-          w-full max-w-2xl
-          transition-all duration-300 ease-out
-          ${panelOpen ? "lg:mr-64" : ""}
-        `}
-      >
-        <div className="bg-white rounded-xl border border-neutral-200/80 shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h1 className="text-xl font-medium text-neutral-800">Calendar Logs</h1>
-            <div className="flex items-center gap-3">
-              <label htmlFor="view-filter" className="text-sm text-neutral-600">
-                View
-              </label>
-              <select
-                id="view-filter"
-                value={viewFilter}
-                onChange={(e) => setViewFilter(e.target.value)}
-                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-800
-                  focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-400 bg-white"
-              >
-                <option value="all">All</option>
-                {ACTIVITY_TYPES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col lg:flex-row bg-white lg:bg-[#eae9e3]">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-0 lg:h-screen lg:overflow-hidden pb-[320px] lg:pb-0 lg:mr-80">
+        {/* Header */}
+        <header className="sticky top-0 z-20 bg-white border-b border-neutral-200/80 px-4 py-2.5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={goToToday}
+            className={`
+              px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200
+              ${isViewingCurrentMonth
+                ? "text-neutral-400 cursor-default"
+                : "text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200"}
+            `}
+            disabled={isViewingCurrentMonth}
+          >
+            Today
+          </button>
+
+          <div className="flex-1 flex items-center justify-center gap-1">
+            <button
+              type="button"
+              onClick={goToPrevMonth}
+              disabled={isAtStart}
+              className={`
+                p-1.5 rounded-lg transition-colors
+                ${isAtStart
+                  ? "text-neutral-300 cursor-default"
+                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"}
+              `}
+              aria-label="Previous month"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-base font-semibold text-neutral-800 min-w-[160px] text-center select-none transition-all duration-150">
+              {visibleMonthLabel}
+            </h1>
+            <button
+              type="button"
+              onClick={goToNextMonth}
+              disabled={isViewingCurrentMonth}
+              className={`
+                p-1.5 rounded-lg transition-colors
+                ${isViewingCurrentMonth
+                  ? "text-neutral-300 cursor-default"
+                  : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"}
+              `}
+              aria-label="Next month"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
 
-          <Calendar
-            currentDate={currentDate}
-            onMonthChange={(delta) =>
-              setCurrentDate(
-                (prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1)
-              )
-            }
-            activities={activities}
-            viewFilter={viewFilter}
-            onDateClick={handleDateClick}
-          />
-        </div>
+          <select
+            value={viewFilter}
+            onChange={(e) => setViewFilter(e.target.value)}
+            className="appearance-none bg-transparent border-none text-neutral-500 hover:text-neutral-700 cursor-pointer text-sm font-medium focus:outline-none focus:ring-0"
+            aria-label="Filter by activity type"
+          >
+            <option value="all">All</option>
+            {ACTIVITY_TYPES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </header>
+
+        {/* Scroll-snap timeline — one month visible, snaps between months */}
+        <main
+          ref={mainRef}
+          className="flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain scroll-smooth snap-y snap-mandatory"
+        >
+          {months.map((monthDate, idx) => (
+            <div
+              key={monthDate.toISOString()}
+              data-month-index={idx}
+              className="snap-start h-full px-4 py-2 lg:px-6 lg:py-4"
+            >
+              <div className="max-w-2xl mx-auto lg:mx-0 lg:max-w-none h-full">
+                <CalendarMonth
+                  monthDate={monthDate}
+                  activities={activities}
+                  viewFilter={viewFilter}
+                  selectedDateKey={selectedDateKey}
+                  onDateClick={handleDateClick}
+                  fillHeight
+                />
+              </div>
+            </div>
+          ))}
+        </main>
       </div>
 
-      {/* Sliding panel - from right on desktop, overlay on mobile */}
-      <div
+      {/* Today sheet */}
+      <aside
         className={`
-          fixed inset-y-0 right-0 w-full sm:max-w-sm lg:w-80
-          bg-white border-l border-neutral-200 shadow-xl
-          transform transition-transform duration-300 ease-out z-40
+          fixed bottom-0 left-0 right-0
+          lg:top-0 lg:right-0 lg:bottom-0 lg:left-auto
+          lg:w-80 lg:min-w-80 lg:max-w-sm
+          flex-shrink-0
+          bg-white
           flex flex-col
-          ${panelOpen ? "translate-x-0" : "translate-x-full"}
+          lg:h-screen lg:overflow-y-auto
+          z-10
+          max-h-[45vh] lg:max-h-none overflow-y-auto
         `}
       >
-        <div className="p-6 overflow-y-auto flex-1">
-          <ActivityPanel
-            isOpen={panelOpen}
-            onClose={closePanel}
-            initialDate={panelInitialDate}
-            editActivity={editActivity}
+        <div className="lg:sticky lg:top-0 lg:z-10 lg:bg-white lg:pt-6">
+          <TodaySheet
+            selectedDate={selectedDate || new Date()}
             activitiesForDate={activitiesForDate}
-            onSave={handleSave}
-            onDelete={deleteActivity}
-            onEdit={(a) => setEditActivity(a)}
+            onTypeTap={handleTypeTap}
           />
         </div>
-      </div>
-
-      {/* Backdrop for mobile */}
-      {panelOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
-          onClick={closePanel}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* FAB */}
-      <button
-        type="button"
-        onClick={() => openPanel()}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-neutral-800
-          text-white shadow-lg hover:bg-neutral-700
-          flex items-center justify-center transition z-20
-          focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2
-          focus:ring-offset-[#eae9e3]"
-        aria-label="Create activity"
-      >
-        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-      </button>
+      </aside>
     </div>
   );
 }
