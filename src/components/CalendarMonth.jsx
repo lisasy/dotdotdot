@@ -81,7 +81,7 @@ export default function CalendarMonth({
     >
       <div
         className={`
-          grid grid-cols-7 gap-px bg-neutral-200/80 rounded-xl overflow-hidden
+          grid grid-cols-7 rounded-xl overflow-hidden
           ${fillHeight ? "flex-1" : ""}
         `}
         style={fillHeight ? { gridTemplateRows: `auto repeat(${rowCount}, 1fr)` } : undefined}
@@ -89,7 +89,7 @@ export default function CalendarMonth({
         {WEEKDAYS_SHORT.map((day) => (
           <div
             key={day}
-            className="bg-white py-1.5 text-center text-xs font-medium text-neutral-500"
+            className="py-1.5 text-center text-xs font-medium text-neutral-500"
           >
             {day}
           </div>
@@ -107,38 +107,51 @@ export default function CalendarMonth({
               onClick={() => !isFuture && onDateClick(date)}
               disabled={isFuture}
               className={`
-                group min-h-[56px] sm:min-h-[72px] p-1.5 sm:p-2 bg-white text-left
+                group min-h-[56px] sm:min-h-[72px] p-1.5 sm:p-2
+                flex flex-col
                 transition-all duration-200 ease-out
-                focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:ring-inset
-                ${!isCurrentMonth ? "text-neutral-400" : "text-neutral-800"}
+                focus:outline-none focus:ring-2 focus:ring-neutral-400/30 focus:ring-inset
+                ${!isCurrentMonth ? "text-neutral-400/60" : "text-neutral-700"}
                 ${isFuture
-                  ? "text-neutral-300 bg-neutral-50/50 cursor-not-allowed opacity-60"
-                  : "hover:bg-neutral-50 active:scale-[0.98] cursor-pointer"}
-                ${isSelected && !isFuture ? "bg-[#F2F2F2] rounded-lg" : ""}
+                  ? "text-neutral-400/40 cursor-not-allowed opacity-50"
+                  : "hover:bg-white/40 active:scale-[0.98] cursor-pointer"}
+                ${isSelected && !isFuture ? "bg-white/60 rounded-lg" : ""}
               `}
             >
-              <span className="block text-sm font-medium mb-1">{date.getDate()}</span>
-              <div className="grid grid-cols-3 gap-0.5 lg:gap-1 max-w-[36px] lg:max-w-[60px] mx-auto">
-                {dayActivities.length > 0 && Array.from({ length: 9 }).map((_, i) => {
-                  const a = dayActivities[i];
-                  const type = a ? getActivityTypeById(a.typeId) : null;
+              <span className="text-sm font-medium mb-1">{date.getDate()}</span>
+              <div className="flex-1 flex items-center justify-center">
+              <div className="grid grid-cols-2 gap-0.5 lg:gap-1 max-w-[24px] lg:max-w-[40px]">
+                {ACTIVITY_TYPES.map((type, i) => {
+                  const isLogged = dayActivities.some((a) => a.typeId === type.id);
+                  if (!isLogged) return null;
                   return (
                     <span
-                      key={a?.id ?? i}
+                      key={type.id}
                       className={`
-                        aspect-square w-[10px] lg:w-4 rounded-[3px] flex-shrink-0
-                        transition-shadow duration-200
-                        ${type ? "shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : ""}
+                        relative aspect-square w-[10px] lg:w-4 rounded-[3px] flex-shrink-0
+                        shadow-[0_1px_3px_rgba(0,0,0,0.12)]
+                        transition-all duration-200
+                        peer
                         ${!isFuture ? "group-hover:animate-[dot-flutter_0.5s_ease-in-out]" : ""}
+                        [&:hover>.dot-tooltip]:opacity-100 [&:hover>.dot-tooltip]:translate-y-0
                       `}
                       style={{
-                        backgroundColor: type?.color || "transparent",
+                        backgroundColor: type.color,
                         animationDelay: !isFuture ? `${i * 45}ms` : undefined,
                       }}
-                      title={type?.name}
-                    />
+                    >
+                      <span
+                        className="dot-tooltip pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5
+                          px-2 py-1 rounded-md bg-neutral-800 text-white text-[10px] lg:text-xs font-medium
+                          whitespace-nowrap opacity-0 translate-y-1
+                          transition-all duration-150 ease-out z-30"
+                      >
+                        {type.name}
+                      </span>
+                    </span>
                   );
                 })}
+              </div>
               </div>
             </button>
           );

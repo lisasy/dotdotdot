@@ -2,7 +2,7 @@
 
 :root {
   --bg-app: #eae9e3;
-  --font-dm: "DM Mono", ui-monospace, monospace;
+  --font-dm: "DM Sans", system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -11,6 +11,10 @@
 
 html {
   font-family: var(--font-dm);
+}
+
+html, body, #root {
+  height: 100%;
 }
 
 body {

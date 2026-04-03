@@ -12,10 +12,8 @@ function formatDisplayDate(date) {
     d.getDate() === today.getDate() &&
     d.getMonth() === today.getMonth() &&
     d.getFullYear() === today.getFullYear();
-  if (isToday) {
-    return `Today ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-  }
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const dateStr = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  return isToday ? `Today · ${dateStr}` : dateStr;
 }
 
 export default function TodaySheet({
@@ -27,7 +25,6 @@ export default function TodaySheet({
     ? selectedDate.toISOString().slice(0, 10)
     : new Date().toISOString().slice(0, 10);
   const displayDate = selectedDate || new Date();
-  const count = activitiesForDate.length;
 
   const loggedByType = {};
   activitiesForDate.forEach((a) => {
@@ -42,16 +39,11 @@ export default function TodaySheet({
       </div>
 
       <div className="px-4 sm:px-6 pb-6 pt-2 lg:pt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold text-neutral-800">
-            {formatDisplayDate(displayDate)}
-          </h3>
-          <span className="text-sm text-neutral-500">
-            {count} selected
-          </span>
-        </div>
+        <h3 className="text-base font-semibold text-neutral-800 mb-4">
+          {formatDisplayDate(displayDate)}
+        </h3>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
           {ACTIVITY_TYPES.map((type) => {
             const activity = loggedByType[type.id];
             const isLogged = !!activity;
@@ -62,48 +54,46 @@ export default function TodaySheet({
                 type="button"
                 onClick={() => onTypeTap(type, activity, dateStr)}
                 className={`
-                  w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left
+                  relative flex flex-col items-start justify-end
+                  rounded-2xl px-4 py-5 lg:aspect-square lg:p-4
                   transition-all duration-200 ease-out
-                  hover:opacity-90 active:scale-[0.99]
+                  hover:opacity-90 active:scale-[0.97]
                   focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:ring-inset
-                  ${isLogged
-                    ? ""
-                    : "bg-[#F2F2F2] hover:bg-neutral-200/80"
-                  }
+                  ${isLogged ? "" : "bg-[#F2F2F0]"}
                 `}
                 style={
                   isLogged
-                    ? {
-                        backgroundColor: `${type.color}18`,
-                      }
+                    ? { backgroundColor: `${type.color}18` }
                     : undefined
                 }
               >
+                {isLogged && (
+                  <span className="absolute top-3 right-3">
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke={type.color}
+                      strokeWidth={2.5}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </span>
+                )}
                 <span
-                  className="w-3 h-3 rounded-md flex-shrink-0"
+                  className="w-3 h-3 rounded-md mb-2"
                   style={{
-                    backgroundColor: isLogged ? type.color : "#d4d4d4",
+                    backgroundColor: isLogged ? type.color : "#c4c4c4",
                   }}
                   aria-hidden
                 />
-                <span className="flex-1 text-sm font-medium text-neutral-800">
+                <span className="text-sm font-medium text-neutral-800">
                   {type.name}
                 </span>
-                {isLogged && (
-                  <svg
-                    className="w-5 h-5 text-blue-500 flex-shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
               </button>
             );
           })}

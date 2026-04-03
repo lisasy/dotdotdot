@@ -23,14 +23,20 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [viewFilter, setViewFilter] = useState("all");
   const [visibleMonthLabel, setVisibleMonthLabel] = useState(() => getMonthLabel(today));
-  const [visibleMonthIdx, setVisibleMonthIdx] = useState(12);
+  const [visibleMonthIdx, setVisibleMonthIdx] = useState(0);
 
   const mainRef = useRef(null);
 
   const months = useMemo(() => {
+    const start = new Date(2026, 1, 1); // Feb 2026
     const list = [];
-    for (let i = -12; i <= 0; i++) {
-      list.push(new Date(today.getFullYear(), today.getMonth() + i, 1));
+    let cursor = new Date(start);
+    while (
+      cursor.getFullYear() < today.getFullYear() ||
+      (cursor.getFullYear() === today.getFullYear() && cursor.getMonth() <= today.getMonth())
+    ) {
+      list.push(new Date(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
     }
     return list;
   }, [today]);
@@ -126,13 +132,17 @@ export default function App() {
     setSelectedDate(new Date());
   }, [months.length, scrollToMonthIndex]);
 
-  // Auto-scroll to current month on mount
+  // Auto-scroll to current month on mount (instant, no animation)
   useEffect(() => {
     const el = mainRef.current;
     if (!el) return;
+    el.classList.remove("scroll-smooth");
     requestAnimationFrame(() => {
       const target = el.querySelector(`[data-month-index="${months.length - 1}"]`);
       if (target) target.scrollIntoView({ block: "start" });
+      requestAnimationFrame(() => {
+        el.classList.add("scroll-smooth");
+      });
     });
   }, [months.length]);
 
@@ -143,11 +153,11 @@ export default function App() {
   const selectedDateKey = formatDateForInput(selectedDate || new Date());
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col lg:flex-row bg-white lg:bg-[#eae9e3]">
+    <div className="h-screen overflow-hidden flex flex-col lg:flex-row bg-[#eae9e3]">
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-0 lg:h-screen lg:overflow-hidden pb-[320px] lg:pb-0 lg:mr-80">
+      <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden pb-[280px] lg:pb-0 lg:mr-80">
         {/* Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-neutral-200/80 px-4 py-2.5 flex items-center gap-3">
+        <header className="sticky top-0 z-20 bg-[#eae9e3] px-4 py-2.5 flex items-center gap-3">
           <button
             type="button"
             onClick={goToToday}
@@ -248,14 +258,13 @@ export default function App() {
           lg:top-0 lg:right-0 lg:bottom-0 lg:left-auto
           lg:w-80 lg:min-w-80 lg:max-w-sm
           flex-shrink-0
-          bg-white
+          bg-transparent lg:bg-[#eae9e3]
           flex flex-col
           lg:h-screen lg:overflow-y-auto
           z-10
-          max-h-[45vh] lg:max-h-none overflow-y-auto
         `}
       >
-        <div className="lg:sticky lg:top-0 lg:z-10 lg:bg-white lg:pt-6">
+        <div className="lg:sticky lg:top-0 lg:z-10 lg:bg-[#eae9e3] lg:pt-6">
           <TodaySheet
             selectedDate={selectedDate || new Date()}
             activitiesForDate={activitiesForDate}
