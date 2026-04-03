@@ -234,7 +234,7 @@ export default function App() {
             <div
               key={monthDate.toISOString()}
               data-month-index={idx}
-              className="snap-start h-full px-4 py-2 lg:px-6 lg:py-4"
+              className="snap-start h-full px-[6px] py-2 lg:px-[6px] lg:py-4"
             >
               <div className="max-w-2xl mx-auto lg:mx-0 lg:max-w-none h-full">
                 <CalendarMonth

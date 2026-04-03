@@ -81,7 +81,7 @@ export default function CalendarMonth({
     >
       <div
         className={`
-          grid grid-cols-7 rounded-xl overflow-hidden
+          grid grid-cols-7 gap-[4px] rounded-xl overflow-hidden
           ${fillHeight ? "flex-1" : ""}
         `}
         style={fillHeight ? { gridTemplateRows: `auto repeat(${rowCount}, 1fr)` } : undefined}
@@ -99,6 +99,7 @@ export default function CalendarMonth({
           const dayActivities = (activitiesByDate[key] || []).slice(0, 9);
           const isSelected = selectedDateKey === key;
           const isFuture = key > todayKey;
+          const hasActivity = dayActivities.length > 0;
 
           return (
             <button
@@ -116,11 +117,12 @@ export default function CalendarMonth({
                   ? "text-neutral-400/40 cursor-not-allowed opacity-50"
                   : "hover:bg-white/40 active:scale-[0.98] cursor-pointer"}
                 ${isSelected && !isFuture ? "bg-white/60 rounded-lg" : ""}
+                ${hasActivity && !isFuture && !isSelected ? "bg-white/30 rounded-lg" : ""}
               `}
             >
               <span className="text-sm font-medium mb-1">{date.getDate()}</span>
               <div className="flex-1 flex items-center justify-center">
-              <div className="grid grid-cols-2 gap-0.5 lg:gap-1 max-w-[24px] lg:max-w-[40px]">
+              <div className="grid grid-cols-2 gap-0.5 lg:gap-1 max-w-[24px] lg:max-w-[34px]">
                 {ACTIVITY_TYPES.map((type, i) => {
                   const isLogged = dayActivities.some((a) => a.typeId === type.id);
                   if (!isLogged) return null;
@@ -128,7 +130,7 @@ export default function CalendarMonth({
                     <span
                       key={type.id}
                       className={`
-                        relative aspect-square w-[10px] lg:w-4 rounded-[3px] flex-shrink-0
+                        relative aspect-square w-[10px] lg:w-[15px] rounded-[3px] flex-shrink-0
                         shadow-[0_1px_3px_rgba(0,0,0,0.12)]
                         transition-all duration-200
                         peer
